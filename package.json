@@ -1,0 +1,75 @@
+{
+  "name": "@onegenui/providers",
+  "version": "2.0.1",
+  "description": "Unified AI SDK provider registry for OneGenUI (Gemini, OpenAI, Anthropic, OpenRouter)",
+  "author": "Ben Vargas",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/g97iulio1609/Oneui-generate.git"
+  },
+  "type": "module",
+  "sideEffects": false,
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.mjs",
+      "require": "./dist/index.js"
+    }
+  },
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE",
+    "docs"
+  ],
+  "scripts": {
+    "build": "tsup",
+    "clean": "rimraf dist",
+    "dev": "tsup --watch",
+    "lint": "eslint src --max-warnings 0",
+    "format": "prettier --write \"src/**/*.ts\" \"*.md\"",
+    "format:check": "prettier --check \"src/**/*.ts\" \"*.md\"",
+    "test": "vitest run",
+    "type-check": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@ai-sdk/anthropic": "^1.1.6",
+    "@ai-sdk/openai": "^1.1.9",
+    "@ai-sdk/provider": "^3.0.0",
+    "@ai-sdk/provider-utils": "^4.0.1",
+    "@google/gemini-cli-core": "^0.26.0-preview.4",
+    "@google/genai": "1.30.0",
+    "@openrouter/ai-sdk-provider": "^0.0.5",
+    "ai": "^4.1.17",
+    "google-auth-library": "^9.11.0",
+    "zod-to-json-schema": "3.25.0"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.30.0",
+    "@types/node": "^20.19.26",
+    "@vitest/coverage-v8": "^4.0.15",
+    "ai": "^6.0.3",
+    "eslint": "^9.39.1",
+    "globals": "^16.5.0",
+    "prettier": "^3.7.4",
+    "rimraf": "^6.1.2",
+    "tsup": "^8.5.1",
+    "tsx": "^4.21.0",
+    "typescript": "^5.9.3",
+    "typescript-eslint": "^8.49.0",
+    "vitest": "^4.0.15",
+    "zod": "^3.25.76"
+  },
+  "peerDependencies": {
+    "zod": "^3.0.0 || ^4.0.0"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "publishConfig": {
+    "access": "public"
+  }
+}

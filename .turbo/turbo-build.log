@@ -11,13 +11,13 @@
 [34mCLI[39m Cleaning output folder
 [34mESM[39m Build start
 [34mCJS[39m Build start
-[32mCJS[39m [1mdist/index.js     [22m[32m38.06 KB[39m
-[32mCJS[39m [1mdist/index.js.map [22m[32m84.41 KB[39m
-[32mCJS[39m ⚡️ Build success in 96ms
 [32mESM[39m [1mdist/index.mjs     [22m[32m36.85 KB[39m
 [32mESM[39m [1mdist/index.mjs.map [22m[32m83.61 KB[39m
-[32mESM[39m ⚡️ Build success in 99ms
+[32mESM[39m ⚡️ Build success in 49ms
+[32mCJS[39m [1mdist/index.js     [22m[32m38.06 KB[39m
+[32mCJS[39m [1mdist/index.js.map [22m[32m84.41 KB[39m
+[32mCJS[39m ⚡️ Build success in 52ms
 DTS Build start
-DTS ⚡️ Build success in 1148ms
+DTS ⚡️ Build success in 3475ms
 DTS dist/index.d.ts  5.89 KB
 DTS dist/index.d.cts 5.89 KB

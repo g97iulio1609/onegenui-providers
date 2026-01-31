@@ -39,7 +39,7 @@ export type { ProviderConfig, ModelConfig } from './types';
 
 | Provider | Package | Models |
 |----------|---------|--------|
-| Gemini | Built-in | gemini-2.0-flash, gemini-1.5-pro |
+| Gemini | Built-in | gemini-3-flash-preview, gemini-3-pro-preview |
 | OpenAI | `@ai-sdk/openai` | gpt-4, gpt-3.5-turbo |
 | Anthropic | `@ai-sdk/anthropic` | claude-3-opus, claude-3-sonnet |
 | OpenRouter | `@openrouter/ai-sdk-provider` | Various |

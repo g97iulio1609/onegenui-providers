@@ -1,6 +1,18 @@
 import { ProviderV3, LanguageModelV3, EmbeddingModelV3, ImageModelV3 } from '@ai-sdk/provider';
 export { LanguageModelV3, LanguageModelV3CallOptions, LanguageModelV3Content, LanguageModelV3FinishReason, LanguageModelV3FunctionTool, LanguageModelV3StreamPart, LanguageModelV3ToolCall, LanguageModelV3Usage, ProviderV3, SharedV3Warning } from '@ai-sdk/provider';
 import { GoogleAuth } from 'google-auth-library';
+import { LanguageModel } from 'ai';
+import { z } from 'zod';
+
+/**
+ * Unified provider registry for OneGenUI.
+ * Supports:
+ * - gemini (via custom CLI provider)
+ * - openai (via standard SDK)
+ * - anthropic (via standard SDK)
+ * - openrouter (via standard SDK)
+ */
+declare const registry: any;
 
 /**
  * Base options available for all authentication types
@@ -168,13 +180,158 @@ interface ThinkingConfigInput {
 }
 
 /**
- * Unified provider registry for OneGenUI.
- * Supports:
- * - gemini (via custom CLI provider)
- * - openai (via standard SDK)
- * - anthropic (via standard SDK)
- * - openrouter (via standard SDK)
+ * Model Configuration Domain
+ * Single source of truth for AI model configuration types and defaults
  */
-declare const registry: any;
 
-export { type GeminiProvider, type GeminiProviderOptions, type Logger, type ThinkingConfigInput, ThinkingLevel, createGeminiProvider, registry };
+declare const TaskTypeSchema: z.ZodEnum<["general", "deepresearch", "complex", "vectorless", "canvas", "vision"]>;
+type TaskType = z.infer<typeof TaskTypeSchema>;
+declare const TASK_TYPES: TaskType[];
+declare const ProviderSchema: z.ZodEnum<["gemini", "openai", "anthropic", "openrouter"]>;
+type Provider = z.infer<typeof ProviderSchema>;
+declare const ModelConfigSchema: z.ZodObject<{
+    modelId: z.ZodString;
+    provider: z.ZodEnum<["gemini", "openai", "anthropic", "openrouter"]>;
+    maxTokens: z.ZodDefault<z.ZodNumber>;
+    temperature: z.ZodOptional<z.ZodNumber>;
+}, "strip", z.ZodTypeAny, {
+    provider: "gemini" | "openai" | "anthropic" | "openrouter";
+    modelId: string;
+    maxTokens: number;
+    temperature?: number | undefined;
+}, {
+    provider: "gemini" | "openai" | "anthropic" | "openrouter";
+    modelId: string;
+    temperature?: number | undefined;
+    maxTokens?: number | undefined;
+}>;
+type ModelConfig = z.infer<typeof ModelConfigSchema>;
+declare const ModelConfigRecordSchema: z.ZodObject<{
+    modelId: z.ZodString;
+    provider: z.ZodEnum<["gemini", "openai", "anthropic", "openrouter"]>;
+    maxTokens: z.ZodDefault<z.ZodNumber>;
+    temperature: z.ZodOptional<z.ZodNumber>;
+} & {
+    id: z.ZodString;
+    taskType: z.ZodEnum<["general", "deepresearch", "complex", "vectorless", "canvas", "vision"]>;
+    enabled: z.ZodDefault<z.ZodBoolean>;
+    createdAt: z.ZodDate;
+    updatedAt: z.ZodDate;
+}, "strip", z.ZodTypeAny, {
+    provider: "gemini" | "openai" | "anthropic" | "openrouter";
+    id: string;
+    modelId: string;
+    maxTokens: number;
+    taskType: "general" | "deepresearch" | "complex" | "vectorless" | "canvas" | "vision";
+    enabled: boolean;
+    createdAt: Date;
+    updatedAt: Date;
+    temperature?: number | undefined;
+}, {
+    provider: "gemini" | "openai" | "anthropic" | "openrouter";
+    id: string;
+    modelId: string;
+    taskType: "general" | "deepresearch" | "complex" | "vectorless" | "canvas" | "vision";
+    createdAt: Date;
+    updatedAt: Date;
+    temperature?: number | undefined;
+    maxTokens?: number | undefined;
+    enabled?: boolean | undefined;
+}>;
+type ModelConfigRecord = z.infer<typeof ModelConfigRecordSchema>;
+interface SupportedModel {
+    provider: Provider;
+    label: string;
+    maxTokens: number;
+}
+declare const SUPPORTED_MODELS: Record<string, SupportedModel>;
+type SupportedModelId = keyof typeof SUPPORTED_MODELS;
+declare const DEFAULT_CONFIGS: Record<TaskType, ModelConfig>;
+
+/**
+ * Model Configuration Port
+ * Interface for storing/retrieving AI model configurations
+ * Follows Dependency Inversion Principle - core doesn't depend on infrastructure
+ */
+
+interface ModelConfigPort {
+    /**
+     * Get configuration for a specific task type
+     * Falls back to "general" if not found, then to hardcoded defaults
+     */
+    getForTask(taskType: TaskType): Promise<ModelConfig>;
+    /**
+     * Get all configurations (for admin UI)
+     */
+    getAll(): Promise<ModelConfigRecord[]>;
+    /**
+     * Update a configuration by ID
+     */
+    update(id: string, data: Partial<ModelConfig>): Promise<ModelConfigRecord>;
+    /**
+     * Create a new configuration
+     */
+    create(data: Omit<ModelConfigRecord, "id" | "createdAt" | "updatedAt">): Promise<ModelConfigRecord>;
+    /**
+     * Delete a configuration by ID
+     */
+    delete(id: string): Promise<void>;
+    /**
+     * Invalidate any cached configurations
+     */
+    invalidateCache(): void;
+}
+
+/**
+ * AI Model Use Case
+ * Business logic for creating and managing AI models
+ * Single Responsibility: orchestrates config retrieval and model creation
+ */
+
+/**
+ * Inject a custom config adapter (e.g., Prisma adapter from dashboard)
+ * Call this once at app startup
+ */
+declare function setConfigAdapter(adapter: ModelConfigPort): void;
+/**
+ * Get the current config adapter
+ */
+declare function getConfigAdapter(): ModelConfigPort;
+/**
+ * Create a language model instance for a specific task
+ * Uses the registry to instantiate the correct provider
+ */
+declare function createModelForTask(taskType: TaskType): Promise<LanguageModel>;
+/**
+ * Create a language model instance from a config
+ */
+declare function createModelFromConfig(config: ModelConfig): LanguageModel;
+/**
+ * Get model configuration for a task (without creating the model)
+ */
+declare function getModelConfig(taskType: TaskType): Promise<ModelConfig>;
+declare function getAllConfigs(): Promise<ModelConfigRecord[]>;
+declare function updateConfig(id: string, data: Partial<ModelConfig>): Promise<ModelConfigRecord>;
+declare function createConfig(data: Omit<ModelConfigRecord, "id" | "createdAt" | "updatedAt">): Promise<ModelConfigRecord>;
+declare function deleteConfig(id: string): Promise<void>;
+declare function invalidateCache(): void;
+
+/**
+ * Memory Config Adapter
+ * In-memory implementation of ModelConfigPort using hardcoded defaults
+ * Used when no database is available (standalone packages)
+ */
+
+declare class MemoryConfigAdapter implements ModelConfigPort {
+    private configs;
+    constructor();
+    private initDefaults;
+    getForTask(taskType: TaskType): Promise<ModelConfig>;
+    getAll(): Promise<ModelConfigRecord[]>;
+    update(id: string, data: Partial<ModelConfig>): Promise<ModelConfigRecord>;
+    create(data: Omit<ModelConfigRecord, "id" | "createdAt" | "updatedAt">): Promise<ModelConfigRecord>;
+    delete(id: string): Promise<void>;
+    invalidateCache(): void;
+}
+
+export { DEFAULT_CONFIGS, type GeminiProvider, type GeminiProviderOptions, type Logger, MemoryConfigAdapter, type ModelConfig, type ModelConfigPort, type ModelConfigRecord, ModelConfigRecordSchema, ModelConfigSchema, type Provider, ProviderSchema, SUPPORTED_MODELS, type SupportedModel, type SupportedModelId, TASK_TYPES, type TaskType, TaskTypeSchema, type ThinkingConfigInput, ThinkingLevel, createConfig, createGeminiProvider, createModelForTask, createModelFromConfig, deleteConfig, getAllConfigs, getConfigAdapter, getModelConfig, invalidateCache, registry, setConfigAdapter, updateConfig };

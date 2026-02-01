@@ -12,7 +12,7 @@ import { createGeminiProvider } from "./gemini-provider";
  * - anthropic (via standard SDK)
  * - openrouter (via standard SDK)
  */
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
+/* eslint-disable @typescript-eslint/no-explicit-any */
 export const registry: any = createProviderRegistry({
   // Gemini (Custom CLI Provider)
   gemini: createGeminiProvider() as any,
@@ -32,3 +32,4 @@ export const registry: any = createProviderRegistry({
     },
   } as any) as any,
 });
+/* eslint-enable @typescript-eslint/no-explicit-any */

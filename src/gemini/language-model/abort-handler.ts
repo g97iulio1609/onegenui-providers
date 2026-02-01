@@ -18,8 +18,7 @@ export function setupAbortHandler(signal: AbortSignal | undefined): {
     throw abortError;
   }
 
-  let listener: (() => void) | undefined;
-  listener = () => {
+  const listener: (() => void) | undefined = () => {
     // Track abort state - actual cancellation happens via status checks
   };
   signal.addEventListener("abort", listener, { once: true });

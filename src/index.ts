@@ -1,15 +1,75 @@
-// Main exports
-export { createGeminiProvider } from "./gemini-provider";
+// ─────────────────────────────────────────────────────────────────────────────
+// Provider Registry
+// ─────────────────────────────────────────────────────────────────────────────
 
-// Export ThinkingLevel enum for users who prefer enum over string
+export { registry } from "./registry";
+export { createGeminiProvider } from "./gemini-provider";
 export { ThinkingLevel } from "./gemini-language-model";
 
-// Type exports
+// ─────────────────────────────────────────────────────────────────────────────
+// AI Model Use Case (centralized model management)
+// ─────────────────────────────────────────────────────────────────────────────
+
+export {
+  // Model creation
+  createModelForTask,
+  createModelFromConfig,
+  getModelConfig,
+  // Admin operations
+  getAllConfigs,
+  updateConfig,
+  createConfig,
+  deleteConfig,
+  invalidateCache,
+  // Adapter injection
+  setConfigAdapter,
+  getConfigAdapter,
+  // Constants
+  DEFAULT_CONFIGS,
+  SUPPORTED_MODELS,
+  TASK_TYPES,
+} from "./use-cases/ai-model.use-case";
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Domain Types & Schemas
+// ─────────────────────────────────────────────────────────────────────────────
+
+export type {
+  TaskType,
+  ModelConfig,
+  ModelConfigRecord,
+  Provider,
+  SupportedModel,
+  SupportedModelId,
+} from "./domain/model-config.schema";
+
+export {
+  TaskTypeSchema,
+  ProviderSchema,
+  ModelConfigSchema,
+  ModelConfigRecordSchema,
+} from "./domain/model-config.schema";
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Ports (for implementing custom adapters)
+// ─────────────────────────────────────────────────────────────────────────────
+
+export type { ModelConfigPort } from "./ports/model-config.port";
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Adapters
+// ─────────────────────────────────────────────────────────────────────────────
+
+export { MemoryConfigAdapter } from "./adapters/memory-config.adapter";
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Provider Types (re-export from AI SDK)
+// ─────────────────────────────────────────────────────────────────────────────
+
 export type { GeminiProvider } from "./gemini-provider";
 export type { GeminiProviderOptions, Logger } from "./types";
 export type { ThinkingConfigInput } from "./gemini-language-model";
 
-// Re-export types from AI SDK for convenience
 export type {
   LanguageModelV3,
   LanguageModelV3FunctionTool,
@@ -23,4 +83,3 @@ export type {
   ProviderV3,
 } from "@ai-sdk/provider";
 
-export { registry } from "./registry";

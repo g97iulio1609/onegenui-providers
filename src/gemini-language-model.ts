@@ -226,7 +226,7 @@ export class GeminiLanguageModel implements LanguageModelV3 {
       const logger = this.logger;
       const streamWarnings = warnings;
       const abortSignal = options.abortSignal;
-      let abortListener = listener;
+      const abortListener = listener;
 
       const stream = new ReadableStream<LanguageModelV3StreamPart>({
         async start(controller) {

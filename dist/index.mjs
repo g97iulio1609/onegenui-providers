@@ -5,6 +5,12 @@ var __require = /* @__PURE__ */ ((x) => typeof require !== "undefined" ? require
   throw Error('Dynamic require of "' + x + '" is not supported');
 });
 
+// src/registry.ts
+import { createProviderRegistry } from "ai";
+import { createOpenAI } from "@ai-sdk/openai";
+import { createAnthropic } from "@ai-sdk/anthropic";
+import { createOpenRouter } from "@openrouter/ai-sdk-provider";
+
 // src/gemini-provider.ts
 import { NoSuchModelError } from "@ai-sdk/provider";
 
@@ -776,8 +782,7 @@ function setupAbortHandler(signal) {
     abortError.name = "AbortError";
     throw abortError;
   }
-  let listener;
-  listener = () => {
+  const listener = () => {
   };
   signal.addEventListener("abort", listener, { once: true });
   const checkAborted = () => {
@@ -937,7 +942,7 @@ var GeminiLanguageModel = class {
       const logger = this.logger;
       const streamWarnings = warnings;
       const abortSignal = options.abortSignal;
-      let abortListener = listener;
+      const abortListener = listener;
       const stream = new ReadableStream({
         async start(controller) {
           try {
@@ -1164,10 +1169,6 @@ function createGeminiProvider(options = {}) {
 }
 
 // src/registry.ts
-import { createProviderRegistry } from "ai";
-import { createOpenAI } from "@ai-sdk/openai";
-import { createAnthropic } from "@ai-sdk/anthropic";
-import { createOpenRouter } from "@openrouter/ai-sdk-provider";
 var registry = createProviderRegistry({
   // Gemini (Custom CLI Provider)
   gemini: createGeminiProvider(),
@@ -1184,9 +1185,215 @@ var registry = createProviderRegistry({
     }
   })
 });
+
+// src/domain/model-config.schema.ts
+import { z as z2 } from "zod";
+var TaskTypeSchema = z2.enum([
+  "general",
+  "deepresearch",
+  "complex",
+  "vectorless",
+  "canvas",
+  "vision"
+]);
+var TASK_TYPES = TaskTypeSchema.options;
+var ProviderSchema = z2.enum(["gemini", "openai", "anthropic", "openrouter"]);
+var ModelConfigSchema = z2.object({
+  modelId: z2.string(),
+  provider: ProviderSchema,
+  maxTokens: z2.number().default(65e3),
+  temperature: z2.number().min(0).max(2).optional()
+});
+var ModelConfigRecordSchema = ModelConfigSchema.extend({
+  id: z2.string(),
+  taskType: TaskTypeSchema,
+  enabled: z2.boolean().default(true),
+  createdAt: z2.date(),
+  updatedAt: z2.date()
+});
+var SUPPORTED_MODELS = {
+  // Google Gemini
+  "gemini-3-flash-preview": {
+    provider: "gemini",
+    label: "Gemini 3 Flash",
+    maxTokens: 65e3
+  },
+  "gemini-3-pro-preview": {
+    provider: "gemini",
+    label: "Gemini 3 Pro",
+    maxTokens: 65e3
+  },
+  // OpenAI
+  "gpt-5.2": {
+    provider: "openai",
+    label: "GPT-5.2",
+    maxTokens: 128e3
+  },
+  "gpt-4.1": {
+    provider: "openai",
+    label: "GPT-4.1",
+    maxTokens: 128e3
+  },
+  // Anthropic Claude 4.5
+  "claude-haiku-4.5": {
+    provider: "anthropic",
+    label: "Claude 4.5 Haiku",
+    maxTokens: 2e5
+  },
+  "claude-sonnet-4.5": {
+    provider: "anthropic",
+    label: "Claude 4.5 Sonnet",
+    maxTokens: 2e5
+  },
+  "claude-opus-4.5": {
+    provider: "anthropic",
+    label: "Claude 4.5 Opus",
+    maxTokens: 2e5
+  }
+};
+var DEFAULT_MAX_TOKENS = 65e3;
+var DEFAULT_CONFIGS = {
+  general: { modelId: "gemini-3-flash-preview", provider: "gemini", maxTokens: DEFAULT_MAX_TOKENS },
+  deepresearch: { modelId: "gemini-3-flash-preview", provider: "gemini", maxTokens: DEFAULT_MAX_TOKENS },
+  complex: { modelId: "gemini-3-pro-preview", provider: "gemini", maxTokens: DEFAULT_MAX_TOKENS },
+  vectorless: { modelId: "gemini-3-flash-preview", provider: "gemini", maxTokens: DEFAULT_MAX_TOKENS },
+  canvas: { modelId: "gemini-3-flash-preview", provider: "gemini", maxTokens: DEFAULT_MAX_TOKENS },
+  vision: { modelId: "gemini-3-flash-preview", provider: "gemini", maxTokens: DEFAULT_MAX_TOKENS }
+};
+
+// src/adapters/memory-config.adapter.ts
+var MemoryConfigAdapter = class {
+  constructor() {
+    this.configs = /* @__PURE__ */ new Map();
+    this.initDefaults();
+  }
+  initDefaults() {
+    const now = /* @__PURE__ */ new Date();
+    Object.entries(DEFAULT_CONFIGS).forEach(([taskType, config]) => {
+      const id = `default-${taskType}`;
+      this.configs.set(id, {
+        id,
+        taskType,
+        ...config,
+        enabled: true,
+        createdAt: now,
+        updatedAt: now
+      });
+    });
+  }
+  async getForTask(taskType) {
+    for (const config of this.configs.values()) {
+      if (config.taskType === taskType && config.enabled) {
+        return {
+          modelId: config.modelId,
+          provider: config.provider,
+          maxTokens: config.maxTokens,
+          temperature: config.temperature
+        };
+      }
+    }
+    for (const config of this.configs.values()) {
+      if (config.taskType === "general" && config.enabled) {
+        return {
+          modelId: config.modelId,
+          provider: config.provider,
+          maxTokens: config.maxTokens,
+          temperature: config.temperature
+        };
+      }
+    }
+    return DEFAULT_CONFIGS.general;
+  }
+  async getAll() {
+    return Array.from(this.configs.values());
+  }
+  async update(id, data) {
+    const existing = this.configs.get(id);
+    if (!existing) {
+      throw new Error(`Config not found: ${id}`);
+    }
+    const updated = {
+      ...existing,
+      ...data,
+      updatedAt: /* @__PURE__ */ new Date()
+    };
+    this.configs.set(id, updated);
+    return updated;
+  }
+  async create(data) {
+    const id = `custom-${Date.now()}`;
+    const now = /* @__PURE__ */ new Date();
+    const record = {
+      ...data,
+      id,
+      createdAt: now,
+      updatedAt: now
+    };
+    this.configs.set(id, record);
+    return record;
+  }
+  async delete(id) {
+    this.configs.delete(id);
+  }
+  invalidateCache() {
+  }
+};
+
+// src/use-cases/ai-model.use-case.ts
+var configAdapter = new MemoryConfigAdapter();
+function setConfigAdapter(adapter) {
+  configAdapter = adapter;
+}
+function getConfigAdapter() {
+  return configAdapter;
+}
+async function createModelForTask(taskType) {
+  const config = await configAdapter.getForTask(taskType);
+  return createModelFromConfig(config);
+}
+function createModelFromConfig(config) {
+  const { provider, modelId } = config;
+  return registry.languageModel(`${provider}:${modelId}`);
+}
+async function getModelConfig(taskType) {
+  return configAdapter.getForTask(taskType);
+}
+async function getAllConfigs() {
+  return configAdapter.getAll();
+}
+async function updateConfig(id, data) {
+  return configAdapter.update(id, data);
+}
+async function createConfig(data) {
+  return configAdapter.create(data);
+}
+async function deleteConfig(id) {
+  return configAdapter.delete(id);
+}
+function invalidateCache() {
+  configAdapter.invalidateCache();
+}
 export {
+  DEFAULT_CONFIGS,
+  MemoryConfigAdapter,
+  ModelConfigRecordSchema,
+  ModelConfigSchema,
+  ProviderSchema,
+  SUPPORTED_MODELS,
+  TASK_TYPES,
+  TaskTypeSchema,
   ThinkingLevel,
+  createConfig,
   createGeminiProvider,
-  registry
+  createModelForTask,
+  createModelFromConfig,
+  deleteConfig,
+  getAllConfigs,
+  getConfigAdapter,
+  getModelConfig,
+  invalidateCache,
+  registry,
+  setConfigAdapter,
+  updateConfig
 };
 //# sourceMappingURL=index.mjs.map

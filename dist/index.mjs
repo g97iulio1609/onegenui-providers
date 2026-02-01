@@ -1373,24 +1373,255 @@ async function deleteConfig(id) {
 function invalidateCache() {
   configAdapter.invalidateCache();
 }
+
+// src/domain/cost-tracking.ts
+import { z as z3 } from "zod";
+var ModelPricingSchema = z3.object({
+  /** Model identifier */
+  modelId: z3.string(),
+  /** Provider name */
+  provider: z3.enum(["google", "openai", "anthropic", "openrouter"]),
+  /** Input token price per 1M tokens (USD) */
+  inputPricePerMillion: z3.number().nonnegative(),
+  /** Output token price per 1M tokens (USD) */
+  outputPricePerMillion: z3.number().nonnegative(),
+  /** Optional cached input price per 1M tokens */
+  cachedInputPricePerMillion: z3.number().nonnegative().optional(),
+  /** Last updated timestamp */
+  updatedAt: z3.date()
+});
+var TokenUsageSchema = z3.object({
+  /** Number of input/prompt tokens */
+  inputTokens: z3.number().int().nonnegative(),
+  /** Number of output/completion tokens */
+  outputTokens: z3.number().int().nonnegative(),
+  /** Optional cached input tokens */
+  cachedInputTokens: z3.number().int().nonnegative().optional(),
+  /** Model identifier used */
+  modelId: z3.string(),
+  /** Request timestamp */
+  timestamp: z3.date()
+});
+var DEFAULT_MODEL_PRICING = {
+  // Google Gemini
+  "gemini-2.0-flash-exp": {
+    modelId: "gemini-2.0-flash-exp",
+    provider: "google",
+    inputPricePerMillion: 0.075,
+    outputPricePerMillion: 0.3,
+    cachedInputPricePerMillion: 0.01875,
+    updatedAt: /* @__PURE__ */ new Date("2026-01-01")
+  },
+  "gemini-1.5-pro": {
+    modelId: "gemini-1.5-pro",
+    provider: "google",
+    inputPricePerMillion: 1.25,
+    outputPricePerMillion: 5,
+    cachedInputPricePerMillion: 0.3125,
+    updatedAt: /* @__PURE__ */ new Date("2026-01-01")
+  },
+  "gemini-1.5-flash": {
+    modelId: "gemini-1.5-flash",
+    provider: "google",
+    inputPricePerMillion: 0.075,
+    outputPricePerMillion: 0.3,
+    cachedInputPricePerMillion: 0.01875,
+    updatedAt: /* @__PURE__ */ new Date("2026-01-01")
+  },
+  // OpenAI
+  "gpt-4o": {
+    modelId: "gpt-4o",
+    provider: "openai",
+    inputPricePerMillion: 2.5,
+    outputPricePerMillion: 10,
+    cachedInputPricePerMillion: 1.25,
+    updatedAt: /* @__PURE__ */ new Date("2026-01-01")
+  },
+  "gpt-4o-mini": {
+    modelId: "gpt-4o-mini",
+    provider: "openai",
+    inputPricePerMillion: 0.15,
+    outputPricePerMillion: 0.6,
+    cachedInputPricePerMillion: 0.075,
+    updatedAt: /* @__PURE__ */ new Date("2026-01-01")
+  },
+  "o1": {
+    modelId: "o1",
+    provider: "openai",
+    inputPricePerMillion: 15,
+    outputPricePerMillion: 60,
+    updatedAt: /* @__PURE__ */ new Date("2026-01-01")
+  },
+  "o1-mini": {
+    modelId: "o1-mini",
+    provider: "openai",
+    inputPricePerMillion: 3,
+    outputPricePerMillion: 12,
+    updatedAt: /* @__PURE__ */ new Date("2026-01-01")
+  },
+  // Anthropic
+  "claude-3-5-sonnet": {
+    modelId: "claude-3-5-sonnet",
+    provider: "anthropic",
+    inputPricePerMillion: 3,
+    outputPricePerMillion: 15,
+    cachedInputPricePerMillion: 0.3,
+    updatedAt: /* @__PURE__ */ new Date("2026-01-01")
+  },
+  "claude-3-5-haiku": {
+    modelId: "claude-3-5-haiku",
+    provider: "anthropic",
+    inputPricePerMillion: 0.8,
+    outputPricePerMillion: 4,
+    cachedInputPricePerMillion: 0.08,
+    updatedAt: /* @__PURE__ */ new Date("2026-01-01")
+  },
+  "claude-3-opus": {
+    modelId: "claude-3-opus",
+    provider: "anthropic",
+    inputPricePerMillion: 15,
+    outputPricePerMillion: 75,
+    cachedInputPricePerMillion: 1.5,
+    updatedAt: /* @__PURE__ */ new Date("2026-01-01")
+  }
+};
+function calculateCost(usage, pricing) {
+  const modelPricing = pricing ?? getModelPricing(usage.modelId);
+  if (!modelPricing) {
+    throw new Error(`No pricing data for model: ${usage.modelId}`);
+  }
+  const inputCost = usage.inputTokens / 1e6 * modelPricing.inputPricePerMillion;
+  const outputCost = usage.outputTokens / 1e6 * modelPricing.outputPricePerMillion;
+  let cachedInputCost = 0;
+  if (usage.cachedInputTokens && modelPricing.cachedInputPricePerMillion) {
+    cachedInputCost = usage.cachedInputTokens / 1e6 * modelPricing.cachedInputPricePerMillion;
+  }
+  return {
+    totalCost: inputCost + outputCost + cachedInputCost,
+    inputCost,
+    outputCost,
+    cachedInputCost,
+    usage,
+    pricing: modelPricing
+  };
+}
+function getModelPricing(modelId) {
+  if (modelId in DEFAULT_MODEL_PRICING) {
+    return DEFAULT_MODEL_PRICING[modelId];
+  }
+  const modelIdLower = modelId.toLowerCase();
+  for (const [key, pricing] of Object.entries(DEFAULT_MODEL_PRICING)) {
+    if (modelIdLower.startsWith(key.toLowerCase())) {
+      return pricing;
+    }
+  }
+  return null;
+}
+var CostTracker = class {
+  constructor() {
+    this.usages = [];
+    this.customPricing = /* @__PURE__ */ new Map();
+  }
+  /**
+   * Add custom pricing for a model
+   */
+  addPricing(pricing) {
+    this.customPricing.set(pricing.modelId, pricing);
+  }
+  /**
+   * Track a request's token usage
+   */
+  track(usage) {
+    const pricing = this.customPricing.get(usage.modelId) ?? getModelPricing(usage.modelId);
+    const calculation = calculateCost(usage, pricing ?? void 0);
+    this.usages.push(calculation);
+    return calculation;
+  }
+  /**
+   * Get total cost across all tracked usages
+   */
+  getTotalCost() {
+    return this.usages.reduce((sum, calc) => sum + calc.totalCost, 0);
+  }
+  /**
+   * Get breakdown by provider
+   */
+  getCostByProvider() {
+    const byProvider = {};
+    for (const calc of this.usages) {
+      const provider = calc.pricing.provider;
+      byProvider[provider] = (byProvider[provider] ?? 0) + calc.totalCost;
+    }
+    return byProvider;
+  }
+  /**
+   * Get breakdown by model
+   */
+  getCostByModel() {
+    const byModel = {};
+    for (const calc of this.usages) {
+      const model = calc.pricing.modelId;
+      byModel[model] = (byModel[model] ?? 0) + calc.totalCost;
+    }
+    return byModel;
+  }
+  /**
+   * Get all tracked usages
+   */
+  getUsages() {
+    return [...this.usages];
+  }
+  /**
+   * Reset the tracker
+   */
+  reset() {
+    this.usages = [];
+  }
+  /**
+   * Get summary statistics
+   */
+  getSummary() {
+    return {
+      totalCost: this.getTotalCost(),
+      totalInputTokens: this.usages.reduce((sum, c) => sum + c.usage.inputTokens, 0),
+      totalOutputTokens: this.usages.reduce((sum, c) => sum + c.usage.outputTokens, 0),
+      requestCount: this.usages.length
+    };
+  }
+};
+function formatCost(cost, currency = "USD") {
+  return new Intl.NumberFormat("en-US", {
+    style: "currency",
+    currency,
+    minimumFractionDigits: 4,
+    maximumFractionDigits: 6
+  }).format(cost);
+}
 export {
+  CostTracker,
   DEFAULT_CONFIGS,
+  DEFAULT_MODEL_PRICING,
   MemoryConfigAdapter,
   ModelConfigRecordSchema,
   ModelConfigSchema,
+  ModelPricingSchema,
   ProviderSchema,
   SUPPORTED_MODELS,
   TASK_TYPES,
   TaskTypeSchema,
   ThinkingLevel,
+  TokenUsageSchema,
+  calculateCost,
   createConfig,
   createGeminiProvider,
   createModelForTask,
   createModelFromConfig,
   deleteConfig,
+  formatCost,
   getAllConfigs,
   getConfigAdapter,
   getModelConfig,
+  getModelPricing,
   invalidateCache,
   registry,
   setConfigAdapter,

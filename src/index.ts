@@ -50,6 +50,20 @@ export {
   ModelConfigRecordSchema,
 } from "./domain/model-config.schema";
 
+// Cost Tracking
+export {
+  ModelPricingSchema,
+  TokenUsageSchema,
+  calculateCost,
+  getModelPricing,
+  formatCost,
+  CostTracker,
+  DEFAULT_MODEL_PRICING,
+  type ModelPricing,
+  type TokenUsage,
+  type CostCalculation,
+} from "./domain/cost-tracking";
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Ports (for implementing custom adapters)
 // ─────────────────────────────────────────────────────────────────────────────

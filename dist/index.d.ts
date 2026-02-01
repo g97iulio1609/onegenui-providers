@@ -317,6 +317,157 @@ declare function deleteConfig(id: string): Promise<void>;
 declare function invalidateCache(): void;
 
 /**
+ * Provider Cost Tracking
+ *
+ * Tracks token usage and calculates costs for AI model providers.
+ * Pricing data is based on public provider pricing as of 2026.
+ *
+ * Note: Prices should be synced periodically with provider pricing pages.
+ */
+
+/**
+ * Model pricing schema (per 1M tokens)
+ */
+declare const ModelPricingSchema: z.ZodObject<{
+    /** Model identifier */
+    modelId: z.ZodString;
+    /** Provider name */
+    provider: z.ZodEnum<["google", "openai", "anthropic", "openrouter"]>;
+    /** Input token price per 1M tokens (USD) */
+    inputPricePerMillion: z.ZodNumber;
+    /** Output token price per 1M tokens (USD) */
+    outputPricePerMillion: z.ZodNumber;
+    /** Optional cached input price per 1M tokens */
+    cachedInputPricePerMillion: z.ZodOptional<z.ZodNumber>;
+    /** Last updated timestamp */
+    updatedAt: z.ZodDate;
+}, "strip", z.ZodTypeAny, {
+    provider: "openai" | "anthropic" | "openrouter" | "google";
+    modelId: string;
+    updatedAt: Date;
+    inputPricePerMillion: number;
+    outputPricePerMillion: number;
+    cachedInputPricePerMillion?: number | undefined;
+}, {
+    provider: "openai" | "anthropic" | "openrouter" | "google";
+    modelId: string;
+    updatedAt: Date;
+    inputPricePerMillion: number;
+    outputPricePerMillion: number;
+    cachedInputPricePerMillion?: number | undefined;
+}>;
+type ModelPricing = z.infer<typeof ModelPricingSchema>;
+/**
+ * Token usage for a single request
+ */
+declare const TokenUsageSchema: z.ZodObject<{
+    /** Number of input/prompt tokens */
+    inputTokens: z.ZodNumber;
+    /** Number of output/completion tokens */
+    outputTokens: z.ZodNumber;
+    /** Optional cached input tokens */
+    cachedInputTokens: z.ZodOptional<z.ZodNumber>;
+    /** Model identifier used */
+    modelId: z.ZodString;
+    /** Request timestamp */
+    timestamp: z.ZodDate;
+}, "strip", z.ZodTypeAny, {
+    timestamp: Date;
+    modelId: string;
+    inputTokens: number;
+    outputTokens: number;
+    cachedInputTokens?: number | undefined;
+}, {
+    timestamp: Date;
+    modelId: string;
+    inputTokens: number;
+    outputTokens: number;
+    cachedInputTokens?: number | undefined;
+}>;
+type TokenUsage = z.infer<typeof TokenUsageSchema>;
+/**
+ * Cost calculation result
+ */
+interface CostCalculation {
+    /** Total cost in USD */
+    totalCost: number;
+    /** Input cost in USD */
+    inputCost: number;
+    /** Output cost in USD */
+    outputCost: number;
+    /** Cached input cost in USD (if applicable) */
+    cachedInputCost: number;
+    /** Token usage details */
+    usage: TokenUsage;
+    /** Pricing used for calculation */
+    pricing: ModelPricing;
+}
+/**
+ * Default pricing for known models (per 1M tokens)
+ * Updated: 2026-01
+ *
+ * Note: These should be synced with actual provider pricing
+ */
+declare const DEFAULT_MODEL_PRICING: Record<string, ModelPricing>;
+/**
+ * Calculate cost for a token usage
+ */
+declare function calculateCost(usage: TokenUsage, pricing?: ModelPricing): CostCalculation;
+/**
+ * Get pricing for a model ID
+ * Attempts to match model ID or model family
+ */
+declare function getModelPricing(modelId: string): ModelPricing | null;
+/**
+ * Accumulator for tracking costs across multiple requests
+ */
+declare class CostTracker {
+    private usages;
+    private customPricing;
+    /**
+     * Add custom pricing for a model
+     */
+    addPricing(pricing: ModelPricing): void;
+    /**
+     * Track a request's token usage
+     */
+    track(usage: TokenUsage): CostCalculation;
+    /**
+     * Get total cost across all tracked usages
+     */
+    getTotalCost(): number;
+    /**
+     * Get breakdown by provider
+     */
+    getCostByProvider(): Record<string, number>;
+    /**
+     * Get breakdown by model
+     */
+    getCostByModel(): Record<string, number>;
+    /**
+     * Get all tracked usages
+     */
+    getUsages(): CostCalculation[];
+    /**
+     * Reset the tracker
+     */
+    reset(): void;
+    /**
+     * Get summary statistics
+     */
+    getSummary(): {
+        totalCost: number;
+        totalInputTokens: number;
+        totalOutputTokens: number;
+        requestCount: number;
+    };
+}
+/**
+ * Format cost as currency string
+ */
+declare function formatCost(cost: number, currency?: string): string;
+
+/**
  * Memory Config Adapter
  * In-memory implementation of ModelConfigPort using hardcoded defaults
  * Used when no database is available (standalone packages)
@@ -334,4 +485,4 @@ declare class MemoryConfigAdapter implements ModelConfigPort {
     invalidateCache(): void;
 }
 
-export { DEFAULT_CONFIGS, type GeminiProvider, type GeminiProviderOptions, type Logger, MemoryConfigAdapter, type ModelConfig, type ModelConfigPort, type ModelConfigRecord, ModelConfigRecordSchema, ModelConfigSchema, type Provider, ProviderSchema, SUPPORTED_MODELS, type SupportedModel, type SupportedModelId, TASK_TYPES, type TaskType, TaskTypeSchema, type ThinkingConfigInput, ThinkingLevel, createConfig, createGeminiProvider, createModelForTask, createModelFromConfig, deleteConfig, getAllConfigs, getConfigAdapter, getModelConfig, invalidateCache, registry, setConfigAdapter, updateConfig };
+export { type CostCalculation, CostTracker, DEFAULT_CONFIGS, DEFAULT_MODEL_PRICING, type GeminiProvider, type GeminiProviderOptions, type Logger, MemoryConfigAdapter, type ModelConfig, type ModelConfigPort, type ModelConfigRecord, ModelConfigRecordSchema, ModelConfigSchema, type ModelPricing, ModelPricingSchema, type Provider, ProviderSchema, SUPPORTED_MODELS, type SupportedModel, type SupportedModelId, TASK_TYPES, type TaskType, TaskTypeSchema, type ThinkingConfigInput, ThinkingLevel, type TokenUsage, TokenUsageSchema, calculateCost, createConfig, createGeminiProvider, createModelForTask, createModelFromConfig, deleteConfig, formatCost, getAllConfigs, getConfigAdapter, getModelConfig, getModelPricing, invalidateCache, registry, setConfigAdapter, updateConfig };

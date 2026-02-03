@@ -40,18 +40,14 @@
     "@ai-sdk/openai": "^1.1.9",
     "@ai-sdk/provider": "^3.0.0",
     "@ai-sdk/provider-utils": "^4.0.1",
-    "@google/gemini-cli-core": "^0.26.0-preview.4",
-    "@google/genai": "1.30.0",
     "@openrouter/ai-sdk-provider": "^0.0.5",
-    "ai": "^4.1.17",
-    "google-auth-library": "^9.11.0",
-    "zod-to-json-schema": "3.25.0"
+    "ai": "^6.0.68",
+    "ai-sdk-provider-gemini-cli": "file:../../repos/ai-sdk-provider-gemini-cli"
   },
   "devDependencies": {
     "@eslint/js": "^9.30.0",
     "@types/node": "^20.19.26",
     "@vitest/coverage-v8": "^4.0.15",
-    "ai": "^6.0.3",
     "eslint": "^9.39.1",
     "globals": "^16.5.0",
     "prettier": "^3.7.4",

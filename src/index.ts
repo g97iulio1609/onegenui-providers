@@ -3,8 +3,8 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 export { registry } from "./registry";
-export { createGeminiProvider } from "./gemini-provider";
-export { ThinkingLevel } from "./gemini-language-model";
+// Re-export createGeminiProvider from community package for convenience
+export { createGeminiProvider } from "ai-sdk-provider-gemini-cli";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // AI Model Use Case (centralized model management)
@@ -80,10 +80,6 @@ export { MemoryConfigAdapter } from "./adapters/memory-config.adapter";
 // Provider Types (re-export from AI SDK)
 // ─────────────────────────────────────────────────────────────────────────────
 
-export type { GeminiProvider } from "./gemini-provider";
-export type { GeminiProviderOptions, Logger } from "./types";
-export type { ThinkingConfigInput } from "./gemini-language-model";
-
 export type {
   LanguageModelV3,
   LanguageModelV3FunctionTool,
@@ -96,4 +92,5 @@ export type {
   LanguageModelV3Usage,
   ProviderV3,
 } from "@ai-sdk/provider";
+
 

@@ -627,9 +627,7 @@ function mapAssistantMessage(message) {
       case "tool-call": {
         const providerMetadata = part.providerMetadata;
         const geminiCliMetadata = providerMetadata?.["gemini-cli"];
-        const providerOptions = part.providerOptions;
-        const geminiCliOptions = providerOptions?.["gemini-cli"];
-        const thoughtSignature = geminiCliMetadata?.thoughtSignature || geminiCliOptions?.thoughtSignature;
+        const thoughtSignature = geminiCliMetadata?.thoughtSignature;
         const geminiPart = {
           functionCall: {
             name: part.toolName,

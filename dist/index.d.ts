@@ -184,60 +184,58 @@ interface ThinkingConfigInput {
  * Single source of truth for AI model configuration types and defaults
  */
 
-declare const TaskTypeSchema: z.ZodEnum<["general", "deepresearch", "complex", "vectorless", "canvas", "vision"]>;
+declare const TaskTypeSchema: z.ZodEnum<{
+    general: "general";
+    deepresearch: "deepresearch";
+    complex: "complex";
+    vectorless: "vectorless";
+    canvas: "canvas";
+    vision: "vision";
+}>;
 type TaskType = z.infer<typeof TaskTypeSchema>;
 declare const TASK_TYPES: TaskType[];
-declare const ProviderSchema: z.ZodEnum<["gemini", "openai", "anthropic", "openrouter"]>;
+declare const ProviderSchema: z.ZodEnum<{
+    gemini: "gemini";
+    openai: "openai";
+    anthropic: "anthropic";
+    openrouter: "openrouter";
+}>;
 type Provider = z.infer<typeof ProviderSchema>;
 declare const ModelConfigSchema: z.ZodObject<{
     modelId: z.ZodString;
-    provider: z.ZodEnum<["gemini", "openai", "anthropic", "openrouter"]>;
+    provider: z.ZodEnum<{
+        gemini: "gemini";
+        openai: "openai";
+        anthropic: "anthropic";
+        openrouter: "openrouter";
+    }>;
     maxTokens: z.ZodDefault<z.ZodNumber>;
     temperature: z.ZodOptional<z.ZodNumber>;
-}, "strip", z.ZodTypeAny, {
-    provider: "gemini" | "openai" | "anthropic" | "openrouter";
-    modelId: string;
-    maxTokens: number;
-    temperature?: number | undefined;
-}, {
-    provider: "gemini" | "openai" | "anthropic" | "openrouter";
-    modelId: string;
-    temperature?: number | undefined;
-    maxTokens?: number | undefined;
-}>;
+}, z.core.$strip>;
 type ModelConfig = z.infer<typeof ModelConfigSchema>;
 declare const ModelConfigRecordSchema: z.ZodObject<{
     modelId: z.ZodString;
-    provider: z.ZodEnum<["gemini", "openai", "anthropic", "openrouter"]>;
+    provider: z.ZodEnum<{
+        gemini: "gemini";
+        openai: "openai";
+        anthropic: "anthropic";
+        openrouter: "openrouter";
+    }>;
     maxTokens: z.ZodDefault<z.ZodNumber>;
     temperature: z.ZodOptional<z.ZodNumber>;
-} & {
     id: z.ZodString;
-    taskType: z.ZodEnum<["general", "deepresearch", "complex", "vectorless", "canvas", "vision"]>;
+    taskType: z.ZodEnum<{
+        general: "general";
+        deepresearch: "deepresearch";
+        complex: "complex";
+        vectorless: "vectorless";
+        canvas: "canvas";
+        vision: "vision";
+    }>;
     enabled: z.ZodDefault<z.ZodBoolean>;
     createdAt: z.ZodDate;
     updatedAt: z.ZodDate;
-}, "strip", z.ZodTypeAny, {
-    provider: "gemini" | "openai" | "anthropic" | "openrouter";
-    id: string;
-    modelId: string;
-    maxTokens: number;
-    taskType: "general" | "deepresearch" | "complex" | "vectorless" | "canvas" | "vision";
-    enabled: boolean;
-    createdAt: Date;
-    updatedAt: Date;
-    temperature?: number | undefined;
-}, {
-    provider: "gemini" | "openai" | "anthropic" | "openrouter";
-    id: string;
-    modelId: string;
-    taskType: "general" | "deepresearch" | "complex" | "vectorless" | "canvas" | "vision";
-    createdAt: Date;
-    updatedAt: Date;
-    temperature?: number | undefined;
-    maxTokens?: number | undefined;
-    enabled?: boolean | undefined;
-}>;
+}, z.core.$strip>;
 type ModelConfigRecord = z.infer<typeof ModelConfigRecordSchema>;
 interface SupportedModel {
     provider: Provider;
@@ -329,61 +327,29 @@ declare function invalidateCache(): void;
  * Model pricing schema (per 1M tokens)
  */
 declare const ModelPricingSchema: z.ZodObject<{
-    /** Model identifier */
     modelId: z.ZodString;
-    /** Provider name */
-    provider: z.ZodEnum<["google", "openai", "anthropic", "openrouter"]>;
-    /** Input token price per 1M tokens (USD) */
+    provider: z.ZodEnum<{
+        openai: "openai";
+        anthropic: "anthropic";
+        openrouter: "openrouter";
+        google: "google";
+    }>;
     inputPricePerMillion: z.ZodNumber;
-    /** Output token price per 1M tokens (USD) */
     outputPricePerMillion: z.ZodNumber;
-    /** Optional cached input price per 1M tokens */
     cachedInputPricePerMillion: z.ZodOptional<z.ZodNumber>;
-    /** Last updated timestamp */
     updatedAt: z.ZodDate;
-}, "strip", z.ZodTypeAny, {
-    provider: "openai" | "anthropic" | "openrouter" | "google";
-    modelId: string;
-    updatedAt: Date;
-    inputPricePerMillion: number;
-    outputPricePerMillion: number;
-    cachedInputPricePerMillion?: number | undefined;
-}, {
-    provider: "openai" | "anthropic" | "openrouter" | "google";
-    modelId: string;
-    updatedAt: Date;
-    inputPricePerMillion: number;
-    outputPricePerMillion: number;
-    cachedInputPricePerMillion?: number | undefined;
-}>;
+}, z.core.$strip>;
 type ModelPricing = z.infer<typeof ModelPricingSchema>;
 /**
  * Token usage for a single request
  */
 declare const TokenUsageSchema: z.ZodObject<{
-    /** Number of input/prompt tokens */
     inputTokens: z.ZodNumber;
-    /** Number of output/completion tokens */
     outputTokens: z.ZodNumber;
-    /** Optional cached input tokens */
     cachedInputTokens: z.ZodOptional<z.ZodNumber>;
-    /** Model identifier used */
     modelId: z.ZodString;
-    /** Request timestamp */
     timestamp: z.ZodDate;
-}, "strip", z.ZodTypeAny, {
-    timestamp: Date;
-    modelId: string;
-    inputTokens: number;
-    outputTokens: number;
-    cachedInputTokens?: number | undefined;
-}, {
-    timestamp: Date;
-    modelId: string;
-    inputTokens: number;
-    outputTokens: number;
-    cachedInputTokens?: number | undefined;
-}>;
+}, z.core.$strip>;
 type TokenUsage = z.infer<typeof TokenUsageSchema>;
 /**
  * Cost calculation result

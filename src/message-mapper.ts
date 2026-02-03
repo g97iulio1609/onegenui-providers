@@ -139,7 +139,7 @@ function mapUserMessage(
 
 /**
  * Maps an assistant message to Gemini format
- * Preserves thoughtSignature from providerOptions for Gemini 3 tool loop validation
+ * Preserves thoughtSignature from providerMetadata for Gemini 3 tool loop validation
  */
 function mapAssistantMessage(
   message: LanguageModelV3Message & { role: "assistant" },
@@ -154,7 +154,6 @@ function mapAssistantMessage(
 
       case "tool-call": {
         // Extract thoughtSignature from providerMetadata (from API response)
-        // or providerOptions (from user) - both are checked for compatibility
         // This is critical for Gemini 3 which requires signatures on function calls
         const providerMetadata = (
           part as { providerMetadata?: Record<string, unknown> }
@@ -163,18 +162,7 @@ function mapAssistantMessage(
           | { thoughtSignature?: string }
           | undefined;
 
-        // Also check providerOptions for backwards compatibility
-        const providerOptions = (
-          part as { providerOptions?: Record<string, unknown> }
-        ).providerOptions;
-        const geminiCliOptions = providerOptions?.["gemini-cli"] as
-          | { thoughtSignature?: string }
-          | undefined;
-
-        // Prefer metadata (from API response) over options (from user)
-        const thoughtSignature =
-          geminiCliMetadata?.thoughtSignature ||
-          geminiCliOptions?.thoughtSignature;
+        const thoughtSignature = geminiCliMetadata?.thoughtSignature;
 
         // Build the part with optional thoughtSignature
         const geminiPart = {

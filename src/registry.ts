@@ -1,4 +1,5 @@
 import { createProviderRegistry } from "ai";
+import type { ProviderV3 } from "@ai-sdk/provider";
 import { createOpenAI } from "@ai-sdk/openai";
 import { createAnthropic } from "@ai-sdk/anthropic";
 import { createOpenRouter } from "@openrouter/ai-sdk-provider";
@@ -11,27 +12,19 @@ import { createGeminiProvider } from "ai-sdk-provider-gemini-cli";
  * - openai (via standard SDK)
  * - anthropic (via standard SDK)
  * - openrouter (via standard SDK)
+ *
+ * Provider casts are required due to SDK type variance between providers.
  */
 /* eslint-disable @typescript-eslint/no-explicit-any */
-export const registry: any = createProviderRegistry({
-  // Gemini (Community CLI Provider - https://github.com/ben-vargas/ai-sdk-provider-gemini-cli)
+export const registry = createProviderRegistry({
   gemini: createGeminiProvider({
     authType: "oauth-personal",
-  }) as any,
+  }) as unknown as ProviderV3,
 
-  // OpenAI
-  openai: createOpenAI() as any,
+  openai: createOpenAI() as unknown as ProviderV3,
 
-  // Anthropic
-  anthropic: createAnthropic() as any,
+  anthropic: createAnthropic() as unknown as ProviderV3,
 
-  // OpenRouter
-  openrouter: createOpenRouter({
-    name: "OneGenUI",
-    extraBody: {
-      "HTTP-Referer": "https://github.com/StartAD/OneGenUI",
-      "X-Title": "OneGenUI",
-    },
-  } as any) as any,
+  openrouter: createOpenRouter({}) as unknown as ProviderV3,
 });
 /* eslint-enable @typescript-eslint/no-explicit-any */
